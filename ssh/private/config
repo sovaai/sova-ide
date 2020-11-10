@@ -1,0 +1,3 @@
+StrictHostKeyChecking=no
+
+IdentityFile /root/.ssh/sova_key

@@ -1,0 +1,13 @@
+
+/gateway
+/processor
+/sova-ide-server
+/sova-ide-ui
+
+.env
+
+/widget
+/service
+/var
+/venv/
+/engine/

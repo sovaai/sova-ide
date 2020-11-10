@@ -1,0 +1,157 @@
+version: "3.5"
+x-logging:
+  &default-logging
+  options:
+    max-size: '100k'
+    max-file: '3'
+  driver: json-file
+
+services:
+  db:
+    image:  postgres:11.8
+    container_name: sova-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?PostgreSQL user isn't defined}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?PostgreSQL password isn't defined}
+      POSTGRES_MULTIPLE_DATABASES: ${BACKEND_GATEWAY_DB:-gateway},${BACKEND_PROCESSOR_DB:-processor},${POSTGRES_DB:-sova}
+    volumes:
+      - ./var/db_pg:/var/lib/postgresql/data
+      - ./backend_pg_init_scripts:/docker-entrypoint-initdb.d
+    ports:
+      - ${BACKEND_POSTGRES_PORT:-5432}:5432
+    restart: always
+
+  gateway_http:
+    build: gateway
+    container_name: sova_backend_gateway_http
+    ports:
+      - ${BACKEND_GATEWAY_PORT:-5000}:${BACKEND_GATEWAY_PORT:-5000}
+    environment:
+      NLAB_ARM_POSTGRES_DB: ${BACKEND_GATEWAY_DB:-gateway}
+      NLAB_ARM_POSTGRES_USER: ${POSTGRES_USER}
+      NLAB_ARM_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NLAB_ARM_POSTGRES_HOST: db
+      NLAB_ARM_POSTGRES_PORT: ${BACKEND_POSTGRES_PORT:-5432}
+      NLAB_ARM_GATEWAY_PORT: ${BACKEND_GATEWAY_PORT:-5000}
+      NLAB_ARM_PROCESSOR_HOST: http://processor_http:${BACKEND_PROCESSOR_PORT:-5050}
+      NLAB_ARM_MAIN_COMPLECT_ID: 016f7a9f-ad2b-4edb-9b27-9a965a116d47
+      NLAB_ARM_COMPILER_TARGET: "sova-engine"
+    command: ["./run_server.sh"]
+    restart: always
+    depends_on:
+      - db
+
+  processor_http:
+    container_name: sova_backend_processor_http
+    build: processor
+    ports:
+      - ${BACKEND_PROCESSOR_PORT:-5050}:${BACKEND_PROCESSOR_PORT:-5050}
+    environment:
+      NLAB_ARM_PROCESSOR_POSTGRES_DB: ${BACKEND_PROCESSOR_DB:-processor}
+      NLAB_ARM_PROCESSOR_POSTGRES_USER: ${POSTGRES_USER}
+      NLAB_ARM_PROCESSOR_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NLAB_ARM_PROCESSOR_POSTGRES_HOST: db
+      NLAB_ARM_PROCESSOR_POSTGRES_PORT: ${BACKEND_POSTGRES_PORT:-5432}
+      NLAB_ARM_PROCESSOR_PORT: ${BACKEND_PROCESSOR_PORT:-5050}
+      NLAB_ARM_GATEWAY_URL: http://gateway_http:${BACKEND_GATEWAY_PORT:-5000}
+      NLAB_ARM_COMPILER_HOSTS: engine
+      NLAB_OPENSSH_PRIVATE_KEY: ${OPENSSH_PRIVATE_KEY}
+    command: ["./run_server.sh"]
+    restart: always
+    volumes:
+      - ./ssh/private:/root/.ssh_original
+      - ./var/dltmp:/dltmp
+    depends_on:
+      - db
+
+  processor_task:
+    container_name: sova_backend_processor_task
+    build: processor
+    environment:
+      NLAB_ARM_PROCESSOR_POSTGRES_DB: ${BACKEND_PROCESSOR_DB:-processor}
+      NLAB_ARM_PROCESSOR_POSTGRES_USER: ${POSTGRES_USER}
+      NLAB_ARM_PROCESSOR_POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      NLAB_ARM_PROCESSOR_POSTGRES_HOST: db
+      NLAB_ARM_PROCESSOR_POSTGRES_PORT: ${BACKEND_POSTGRES_PORT:-5432}
+      NLAB_ARM_PROCESSOR_PORT: ${BACKEND_PROCESSOR_PORT:-5050}
+      NLAB_ARM_GATEWAY_URL: http://gateway_http:${BACKEND_GATEWAY_PORT:-5000}
+      NLAB_ARM_COMPILER_HOSTS: engine
+      NLAB_OPENSSH_PRIVATE_KEY: ${OPENSSH_PRIVATE_KEY}
+    command: ["./run_tasks.sh"]
+    restart: always
+    volumes:
+      - ./ssh/private:/root/.ssh_original
+    depends_on:
+      - db
+
+  ide_ui:
+    container_name: sova_ide_ui
+    build: sova-ide-ui
+    env_file:
+      - .env
+    ports:
+      - ${IDE_FRONTEND_PORT:-3000}:5000
+
+  ide_server:
+    container_name: sova_ide_server
+    build: sova-ide-server
+    environment:
+      TEMPLATES_API_URL: http://gateway_http:${BACKEND_GATEWAY_PORT:-5000}
+      PORT: 5000
+      PORT_DEV: 8443
+    ports:
+      - 8443:5000
+
+  widget:
+    image: nginx:1.17.10
+    container_name: sova-widget
+    ports:
+      - 80:80
+    depends_on:
+      - service
+    volumes:
+      - ./widget:/var/www
+      - ./etc/nginx/conf.d:/etc/nginx/conf.d
+    restart: always
+    logging: *default-logging
+
+  engine:
+    build: engine
+    container_name: sova-engine
+    environment:
+      - APS_MAX_FILTERS=1
+      - APS_START_FILTERS=0
+      - APS_MIN_FILTERS=0
+      - APS_LOG_LEVEL=4
+      - IFS_LOG_LEVEL=DEBUG
+      - IFS_LOG_DATA_FLOW=TRUE
+      - IFS_CACHE_SERVERS=memcached.local:11211
+      - IFS_CACHE_TTL=604800
+      - SSHD_ENABLE=1
+      - SSHD_AUTHORIZED_KEYS=${OPENSSH_PUBLIC_KEY}
+    volumes:
+      - ./var/dldata:/dldata
+    depends_on:
+      - memcached.local
+    restart: always
+    logging: *default-logging
+
+  service:
+    build: service
+    command: ["./run_server.sh"]
+    container_name: sova-service
+    environment:
+      - NLAB_SOVA_DEBUG=${CORE_DEBUG:-True}
+      - NLAB_SOVA_ENGINE_HOST=tcp:engine:2255
+      - NLAB_SOVA_DB_DSN=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-sova}
+    depends_on:
+      - engine
+      - db
+    restart: always
+    logging: *default-logging
+
+  memcached.local:
+    image: memcached
+    container_name: sova-memcached
+    restart: always
+    logging: *default-logging
