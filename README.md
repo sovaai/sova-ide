@@ -1,49 +1,47 @@
 # SOVA IDE
 
-## Описание
+SOVA IDE is designed for preparing scripts and rules for generating responses written in the specialized Dialog Language (DL)
 
-SOVA IDE предназначен для подготовки сценариев и правил формирования ответов, записанных на специализированном языке Dialog Language (DL). 
+## Quick start
 
-## Быстрый старт
+To run the SOVA IDE in standard mode, you must perform the following actions:
 
-Для запуска SOVA IDE в стандартном режиме необходимо выполнить следующую последовательность действий:
-
-Выгрузка необходимых исходников:
+Uploading the necessary sources:
 ```bash
 git clone https://github.com/sovaai/sova-ide.git
 cd sova-ide
 ./install.sh
 ```
 
-Сборка докер образов:
+Building Docker images:
 ```bash
 docker-compose build
 ```
 
-Запуск контейнеров:
+Launching containers:
 ```bash
 docker-compose up -d
 ```
-После этого необходимо дождаться, когда запустятся все сервисы и будут созданы базы данных.
+After that, you need to wait until all the services are started and the databases are created.
 
-Интерфейс IDE будет доступен на http://localhost:3000, а тестовый Widget на http://localhost.
+The IDE interface will be available on http://localhost:3000, web widget for tests on http://localhost.
 
-Создание бота по умолчанию для работы тестового виджета:
+Creating a default chatbot for a web widget:
 ```bash
 ./scripts/command.sh bot:create --profile test
 ```
-Вместо test нужно указать профиль бота, созданный в IDE.
+Instead of `test`, specify the bot profile created in the IDE
 
-## Импорт шаблонов в созданный профиль
-Для импорта шаблонов из файла в созданный профиль нужно использовать следующую команду:
+## Import templates to the created profile
+To import templates from a file to the created profile, use the following command:
 ```bash
 ./scripts/import_templates.sh test file
 ```
-Где test - имя созданного в IDE профиля, а file - путь к файлу с шаблонами.
+Where `test` is the name of the profile created in the IDE, and `file` is the path to the template file.
 
-## Импорт словарей в созданный профиль
-Для импорта словарей из файлов в созданный профиль нужно использовать следующую команду:
+## Import dictionaries to the created profile
+To import dictionaries from files to the created profile, use the following command:
 ```bash
 ./scripts/import_dicts.sh test dicts
 ```
-Где test - имя созданного в IDE профиля, а dicts - путь к директории со словарями.
+Where `test` is the name of the profile created in the IDE, and `dicts` is the path to the directory with dictionaries.
