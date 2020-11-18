@@ -45,3 +45,7 @@ To import dictionaries from files to the created profile, use the following comm
 ./scripts/import_dicts.sh test dicts
 ```
 Where `test` is the name of the profile created in the IDE, and `dicts` is the path to the directory with dictionaries.
+
+# Licenses
+
+SOVA IDE is licensed under Apache License 2.0 by Virtual Assistant, LLC.
