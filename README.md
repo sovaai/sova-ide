@@ -10,8 +10,8 @@ SOVA IDE предназначен для подготовки сценариев
 
 Выгрузка необходимых исходников:
 ```bash
-git clone github.com/sovaai/sova_ide &&
-cd sova_ide &&
+git clone https://github.com/sovaai/sova-ide.git
+cd sova-ide
 ./install.sh
 ```
 
